@@ -16,13 +16,19 @@ RUN npm -g config set user root
 RUN npm install -g truffle web3 ganache-cli
 
 # install solc
-RUN wget https://github.com/ethereum/solidity/releases/download/v0.4.25/solc-static-linux
-RUN mv solc-static-linux /usr/bin/solc
-RUN chmod +x /usr/bin/solc
+# RUN wget https://github.com/ethereum/solidity/releases/download/v0.4.25/solc-static-linux
+# RUN mv solc-static-linux /usr/bin/solc
+# RUN chmod +x /usr/bin/solc
+RUN pip3 install solc-select
+RUN solc-select install 0.4.26
+RUN solc-select install 0.5.16
+RUN solc-select install 0.6.11
+RUN solc-select use 0.4.26
+
 
 # install go
-RUN wget https://dl.google.com/go/go1.10.4.linux-amd64.tar.gz
-RUN tar -xvf go1.10.4.linux-amd64.tar.gz
+RUN wget https://dl.google.com/go/go1.10.8.linux-amd64.tar.gz
+RUN tar -xvf go1.10.8.linux-amd64.tar.gz
 RUN mv go /usr/lib/go-1.10
 RUN mkdir /go
 ENV GOPATH=/go
@@ -38,6 +44,11 @@ RUN python3 scripts/mk_make.py --python
 WORKDIR /z3/build
 RUN make -j7
 RUN make install
+
+# python deps take a long time so do them first
+WORKDIR /go/src/ilf
+COPY ./requirements.txt .
+RUN pip3 install -r requirements.txt --no-cache-dir
 
 # copy ilf
 ADD ./ /go/src/ilf/
@@ -55,8 +66,6 @@ RUN git apply /go/src/ilf/script/patch.geth
 # RUN git apply /go/src/ilf/script/patch.geth
 
 WORKDIR /go/src/ilf
-# install python dependencies
-RUN pip3 install -r requirements.txt --no-cache-dir
 RUN go build -o execution.so -buildmode=c-shared export/execution.go
 
-ENTRYPOINT [ "/bin/bash" ]
+ENTRYPOINT [ "python3", "toolize/entry.py" ]

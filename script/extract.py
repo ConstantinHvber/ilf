@@ -68,10 +68,10 @@ def extract_transactions():
     build_path = os.path.join(args.proj, 'build')
     if os.path.exists(build_path):
         shutil.rmtree(build_path)
-    subprocess.call('truffle compile', shell=True)
-    subprocess.call('truffle deploy', shell=True)
+    assert 0 == subprocess.call('truffle compile', shell=True)
+    assert 0 == subprocess.call('truffle deploy', shell=True)
     extract_js_path = os.path.join(os.environ['GOPATH'], 'src', 'ilf', 'script', 'extract.js')
-    subprocess.call('truffle exec {}'.format(extract_js_path), shell=True)
+    assert 0 == subprocess.call('truffle exec {}'.format(extract_js_path), shell=True)
 
 
 def main():
