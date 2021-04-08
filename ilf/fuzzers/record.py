@@ -102,6 +102,12 @@ class RecordManager:
                     elif log.op == RETURN:
                         method_record.last_return = True
                         method_record.count_return += 1
+            
+            if log.error.startswith("ilf:"):
+                if "overflow" in log.error:
+                    method_record.overflowed = True
+                if "underflow" in log.error:
+                    method_record.underflowed = True
 
 
 class MethodRecord:
@@ -123,6 +129,8 @@ class MethodRecord:
         self.covered_blocks = set()
         self.tx_count = 0
 
+        self.overflowed = False
+        self.underflowed = False
         self.last_revert = False
         self.last_invalid = False
         self.last_return = False
@@ -144,6 +152,8 @@ class MethodRecord:
         feature.append(float(self.payable))
         feature.append(float(self.fallback))
         feature.append(len(self.covered_blocks) / self.len_blocks if self.len_blocks > 0 else 0)
+        feature.append(int(self.overflowed))
+        feature.append(int(self.underflowed))
         feature.append(int(self.last_revert))
         feature.append(int(self.last_invalid))
         feature.append(int(self.last_return))

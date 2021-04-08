@@ -4,8 +4,8 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/cymerrad/go-ethereum/common"
+	"github.com/cymerrad/go-ethereum/crypto"
 )
 
 var accountHexes = []string{

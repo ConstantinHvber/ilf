@@ -1,6 +1,6 @@
 from .tx import Tx
 from ..ethereum import *
-
+from pprint import pformat
 
 class Log:
 
@@ -15,6 +15,12 @@ class Log:
         self.depth = kwargs['depth']
         self.op_name = kwargs['opName']
         self.error = kwargs['error']
+
+        self._orig = kwargs
+
+    def __str__(self):
+        return pformat(self._orig)
+
 
 
 class Logger:

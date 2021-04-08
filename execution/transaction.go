@@ -9,8 +9,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/cymerrad/go-ethereum/common"
+	"github.com/cymerrad/go-ethereum/core/types"
 )
 
 type MyTransaction struct {

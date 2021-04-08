@@ -3,10 +3,10 @@ package execution
 import (
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/cymerrad/go-ethereum/common"
+	"github.com/cymerrad/go-ethereum/core/types"
+	"github.com/cymerrad/go-ethereum/core/vm"
+	"github.com/cymerrad/go-ethereum/crypto"
 )
 
 type ProcessOptions struct {
