@@ -4,6 +4,7 @@ import shutil
 import signal
 import argparse
 import subprocess
+from pathlib import Path
 
 accounts = [
     "1c6dbb1fe61bbb7c256f0ffcbd34087e211173dbc8454220b8b166ed6ada5c00",
@@ -26,31 +27,31 @@ def get_args():
 args = get_args()
 
 
-def modify_truffle_js():
-    global args
+# def modify_truffle_js():
+#     global args
 
-    s = ('module.exports = {\n'
-         '  networks: {\n'
-         '    development: {\n'
-         '      host: "127.0.0.1",\n'
-         '      port: ' + str(args.port) + ',\n'
-         '      network_id: "*",\n'
-         '      gas: 1000000000\n'
-         '    }\n'
-         '  },\n'
-         '  compilers: {\n'
-         '     solc: {\n'
-         '       version: "native",\n'
-         '       optimizer: {\n'
-         '         enabled: true,\n'
-         '         runs: 200\n'
-         '       }\n'
-         '     }\n'
-         '  }\n'
-         '};')
+#     s = ('module.exports = {\n'
+#          '  networks: {\n'
+#          '    development: {\n'
+#          '      host: "127.0.0.1",\n'
+#          '      port: ' + str(args.port) + ',\n'
+#          '      network_id: "*",\n'
+#          '      gas: 1000000000\n'
+#          '    }\n'
+#          '  },\n'
+#          '  compilers: {\n'
+#          '     solc: {\n'
+#          '       version: "native",\n'
+#          '       optimizer: {\n'
+#          '         enabled: true,\n'
+#          '         runs: 200\n'
+#          '       }\n'
+#          '     }\n'
+#          '  }\n'
+#          '};')
 
-    with open(os.path.join(args.proj, 'truffle-config.js'), 'w') as f:
-        f.write(s)
+#     with open(os.path.join(args.proj, 'truffle-config.js'), 'w') as f:
+#         f.write(s)
 
 
 def run_ganache():
@@ -59,26 +60,31 @@ def run_ganache():
         account_cmd.append('--account=0x{},{}'.format(account, amount))
 
     cmd = ['ganache-cli', '-p', str(args.port), '--gasLimit', '0xfffffffffff'] + account_cmd
-    pid = subprocess.Popen(cmd).pid
-    return pid
+    proc = subprocess.Popen(cmd)
+    return proc
 
 
 def extract_transactions():
     os.chdir(args.proj)
-    build_path = os.path.join(args.proj, 'build')
-    if os.path.exists(build_path):
-        shutil.rmtree(build_path)
-    assert 0 == subprocess.call('truffle compile', shell=True)
-    assert 0 == subprocess.call('truffle deploy', shell=True)
-    extract_js_path = os.path.join(os.environ['GOPATH'], 'src', 'ilf', 'script', 'extract.js')
-    assert 0 == subprocess.call('truffle exec {}'.format(extract_js_path), shell=True)
+    # build_path = os.path.join(args.proj, 'build')
+    # if os.path.exists(build_path):
+    #     shutil.rmtree(build_path)
+    assert 0 == subprocess.call('truffle compile'.split())
+    assert 0 == subprocess.call('truffle deploy'.split())
+    extract_js_path = Path(os.environ['GOPATH']) / 'src' / 'ilf' /'script' / 'extract.js'
+    assert 0 == subprocess.call('truffle exec {}'.format(extract_js_path).split())
 
 
 def main():
-    pid = run_ganache()
+    proc = run_ganache()
     extract_transactions()
-    os.kill(pid, signal.SIGTERM)
+    try:
+        proc.terminate()
+    except ProcessLookupError:
+        # this_is_fine.jpg
+        pass
 
+    exit(0)
 
 if __name__ == '__main__':
     main()

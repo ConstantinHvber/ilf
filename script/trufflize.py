@@ -74,6 +74,15 @@ def main(directory: str, output: Optional[str]):
     succeeded = 0
 
     for version, sources in tqdm(buckets.items()):
+
+        # impromptu configs
+        if version in ["0.4.26"]:
+            continue
+
+        if version not in ["0.5.16", "0.4.24"]:
+            continue
+        # end lulz
+
         assert 0 == subprocess.call(
             f"solc-select use {version}".split()
         ), f"Version {version} failed"
@@ -93,7 +102,7 @@ def main(directory: str, output: Optional[str]):
 
                 if len(failed) % 1000 == 0:
                     total = succeeded + len(failed)
-                    print(f"{succeeded=} {failed=} {total=}")
+                    print(f"{succeeded=} {len(failed)=} {total=}")
 
                 continue
 
@@ -223,6 +232,9 @@ def solidity_abis(file: Union[Path, str]) -> Dict[str, List[ContractABI]]:
     abis = {}
 
     for [header, _, data, _] in grouper(lines, 4):
+        if header is None or data is None:
+            continue
+
         contract_name = header[header.find(b":") + 1 : header.rfind(b" ")].decode(
             "utf8"
         )
