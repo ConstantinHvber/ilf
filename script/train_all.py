@@ -3,9 +3,10 @@ import sys
 import glob
 import time
 import json
+import threading
 import subprocess
 from pathlib import Path
-from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
 
 VISITED_LOG_FILE = Path("/tmp/ilf_visited_log_file.json")
 TRAINED_LOG_FILE = Path("/tmp/ilf_trained_log_file.json")
@@ -29,31 +30,36 @@ def main(projects_dir_name: str, output_dir: str, visited_log_file = None):
     projects_dir = Path(projects_dir_name)
     assert projects_dir.exists()
 
+    write_lock = threading.Lock()
+
     try:
-        files_progress = tqdm(untrained_files)
-        for file in files_progress:
-            truffle_file = projects_dir / file
-            root_dir = truffle_file.parent
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            for file in untrained_files:
 
-            files_progress.set_description(root_dir.name, refresh=True)
+                def _closure(current_file):
+                    truffle_file = projects_dir / current_file
+                    root_dir = truffle_file.parent
 
-            # hacking begins again
-            deploy_file = root_dir / "migrations" / "2_deploy_contracts.js"
-            try:
-                contract_name = get_that_damn_contract_name_again(deploy_file)
-            except ValueError:
-                continue
+                    # hacking begins again
+                    deploy_file = root_dir / "migrations" / "2_deploy_contracts.js"
+                    try:
+                        contract_name = get_that_damn_contract_name_again(deploy_file)
+                    except ValueError:
+                        return
 
-            cmd_text = f"python3 -m ilf --proj {root_dir.resolve()} --contract {contract_name} --limit 2000 --fuzzer symbolic --dataset_dump_path {output_dir}/{root_dir.name}.data"
-            print(f"Will run {cmd_text}")
-            cmd = subprocess.run(cmd_text.split())
+                    cmd_text = f"python3 -m ilf --proj {root_dir.resolve()} --contract {contract_name} --limit 2000 --fuzzer symbolic --dataset_dump_path {output_dir}/{root_dir.name}.data --execution ./execution_safe.so"
+                    print(f"Will run {cmd_text}")
+                    cmd = subprocess.run(cmd_text.split())
 
-            if cmd.returncode == 0:
-                trained_files.add(file)
+                    if cmd.returncode == 0:
+                        with write_lock:
+                            trained_files.add(current_file)
+
+                executor.submit(_closure, file)
+
 
     except Exception:
-        print()
-        print(f"Processing {file} failed unexpectedly")
+        pass
 
     except KeyboardInterrupt:
         pass
