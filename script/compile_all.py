@@ -1,86 +1,79 @@
 import glob
-import time
-import json
+import threading
 import subprocess
 from pathlib import Path
+from typing import *
+from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
+from .utils import progress_save
 
 EXTRACT_SCRIPT = (Path(__file__).parent / "extract.py").resolve()
 assert EXTRACT_SCRIPT.exists()
 
-VISITED_LOG_FILE = Path("/tmp/ilf_visited_log_file.json")
-FAILED_LOG_FILE = Path("/tmp/ilf_failed_log_file.json")
 
+def main():
+    with progress_save(visited=(set, list), failed_detail=(dict)) as (
+        visited,
+        failed_detail,
+    ):
+        executor = None
+        p_bar = None
+        failed = set(failed_detail.keys())
+        processed = set()
 
-def main(dry_run=False):
-    visited_files = set()
-    if VISITED_LOG_FILE.exists():
-        with VISITED_LOG_FILE.open() as fr:
-            visited_files = set(json.load(fr))
-
-    failed_files = set()
-    failed_files_detail = dict()
-    if FAILED_LOG_FILE.exists():
-        with FAILED_LOG_FILE.open() as fr:
-            failed_files_detail = json.load(fr)
-            failed_files = set(failed_files_detail.keys())
-
-    print(f"Starting with {len(visited_files)} already visited files")
-
-    processed_files = set()
-
-    try:
-        while True:
-            files = set(glob.glob("./**/truffle-config.js", recursive=True))
-            files -= failed_files
-
-            new_files = files - visited_files
+        try:
+            print("Counting files...")
+            files = set(glob.iglob("./**/truffle-config.js", recursive=True))
+            files -= failed
+            new_files = files - visited
 
             print(f"We have {len(new_files)} new files")
 
-            if dry_run:
-                time.sleep(10)
-                continue
+            write_lock = threading.Lock()
+            p_bar = tqdm(total=len(new_files))
 
-            files_progress = tqdm(new_files)
-            for file in files_progress:
-                truffle_file = Path(file)
-                root_dir = truffle_file.parent
+            TNPREFIX = "ilf"
+            DEFAULT_PORT = 8545
+            with ThreadPoolExecutor(max_workers=8, thread_name_prefix=TNPREFIX) as executor:
+                for _file in new_files:
 
-                files_progress.set_description(root_dir.name, refresh=True)
+                    def _closure(file):
+                        t_name = threading.current_thread().name
+                        t_id = int(t_name[len(TNPREFIX)+1:])
+                        port = DEFAULT_PORT + t_id
 
-                # do stuff
-                cmd = subprocess.run(f"python3 {EXTRACT_SCRIPT} --proj {root_dir}".split(), capture_output=True)
+                        truffle_file = Path(file).resolve()
+                        root_dir = truffle_file.parent
 
-                if cmd.returncode != 0:
-                    failed_files_detail[file] = cmd.stderr.decode("utf8")
-                    failed_files.add(file)
+                        cmd = subprocess.run(
+                            f"python3 {EXTRACT_SCRIPT} --proj {root_dir} --port {port}".split(),
+                            capture_output=True,
+                        )
 
-                    # raise Exception("Command failed")
+                        with write_lock:
+                            p_bar.update(1)
+
+                            if cmd.returncode != 0:
+                                failed_detail[file] = cmd.stderr.decode("utf8")
+                                failed.add(file)
+                                p_bar.set_description(f"{root_dir.name} @ {t_id} FAILED", refresh=True)
+                            else:
+                                processed.add(file)
+                                p_bar.set_description(f"{root_dir.name} @ {t_id} done", refresh=True)
 
 
-                processed_files.add(file)
+                    executor.submit(_closure, _file)
 
-            visited_files |= processed_files
+        except KeyboardInterrupt:
+            print()
+            print("Exiting gracefully... (let the threads finish)")
 
-    except Exception:
-        print()
-        print(f"Processing {file} failed unexpectedly")
-
-    except KeyboardInterrupt:
-        pass
-
-    finally:
-        visited_files |= processed_files
-
-        with VISITED_LOG_FILE.open("w") as fw:
-            json.dump(list(visited_files), fw)
-
-        with FAILED_LOG_FILE.open("w") as fw:
-            json.dump(failed_files_detail, fw)
-
-        print()
-        print(f"Processed successfuly {len(processed_files)} new files")
+        finally:
+            if executor:
+                executor.shutdown(cancel_futures=True)
+            if p_bar:
+                p_bar.close()
+            visited |= processed
 
 
 if __name__ == "__main__":
