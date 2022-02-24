@@ -7,10 +7,10 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/cymerrad/go-ethereum/accounts/abi"
-	"github.com/cymerrad/go-ethereum/common"
-	"github.com/cymerrad/go-ethereum/core/asm"
-	"github.com/cymerrad/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/asm"
+	"github.com/ethereum/go-ethereum/core/vm"
 )
 
 var bzzr0 = fmt.Sprintf("%x", append([]byte{0xa1, 0x65}, []byte("bzzr0")...))
